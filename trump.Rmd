@@ -1,14 +1,62 @@
 ---
 title: "President Donald Trump"
-author: "Your Name"
+author: "Ojaswi Malik"
 date: "`r lubridate::today()`"
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(modelr)
+library(broom)
 ```
 
+## Part 1: President Donald Trump
+
+```{r linear trump}
+
+#Import the data
+trump_data <- here("data", "trump.csv") %>%
+  read.csv()
+
+#Calculating predicted values below:
+#Using lm() to find the actual value of estimated parameters
+lm_mod <- lm(trump ~ video, trump_data)
+
+#using data_grid() to  create grid of data points covering the region where observed data is 
+grid <- trump_data %>%
+  data_grid(video)
+
+#using augment() to use lm_mod to generate predictions for each observation in the data frame
+grid <- augment(lm_mod, newdata = grid)
+
+#Graphing using geom_line() building from predicted values
+ggplot(trump_data, mapping = aes(x = video, y = trump)) + 
+  geom_point(mapping = aes(alpha = .1)) +
+  geom_line(mapping = aes(y = .fitted), data = grid, color = "red", size = 1) +
+  labs(
+    title = "President Donald Trump and video from 2005",
+    x = "Response to question concerning importance of the video",
+    y = "Feeling thermometer rating of Trump",
+    caption = "Source: 2012 American National Election Studies survey",
+    alpha = NULL
+  ) +
+  theme(legend.position = "none")
+
+```
+
+**Relationship**: From the linear regression we can see an indirect relationship between the importance of the video and feelings towards Donald Trump. This mean that those who consider that the information from the video should have mattered a great deal to people when deciding to vote, have a colder attitude towards Trump. Vice versa, those who consider that the information from the video should not matter a lot to people when deciding to vote, have a are more supportive of Trump.
+
+## Part 2
+
+```{r own model}
+#from monday
+#- covariance
+#- can graph residuals
+
+```
 
 
 ## Session info

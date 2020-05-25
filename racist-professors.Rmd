@@ -5,6 +5,8 @@ date: "`r lubridate::today()`"
 output: github_document
 ---
 
+## Setup
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -12,6 +14,7 @@ library(rcfss)
 library(modelr)
 library(broom)
 library(knitr)
+library(margins)
 theme_set(theme_minimal())
 ```
 
@@ -25,7 +28,63 @@ gss_data <- gss_data %>%
 
 ```
 
-## Using only Age to make prediction
+## 1. Plotting Average Marginal Effects
+
+In my analysis I want to see the effect of a few variables collected from the General Social Survey poll on answering the question: "should racist professors be allowed to teach?" I will begin by first plotting the average marginal effect of these specific variables (namely age, black, south, authoritarianism, social_cons3, hispanic_2 and sex) using the margins package to visualize the logistic regression estimates and confidence intervals.
+
+```{r AME}
+# estimate logistic regression model using glm()
+gss_logit_mod <- glm(
+  colrac ~ age + black + south + authoritarianism + social_cons3 + hispanic_2 + sex,
+  family = "binomial",
+  data = gss_data
+)
+
+# Plot the average marginal effect of each variable using the margins package
+# to visualize the logistic regression estimates and confidence intervals.
+## estimate marginal effects
+gss_logit_marg <- margins(gss_logit_mod)
+
+## extract average marginal effects
+gss_logit_marg_tbl <- summary(gss_logit_marg) %>%
+  as_tibble() %>%
+  mutate(factor = recode(
+    factor,
+    "southSouth" = "South",
+    "age" = "Age",
+    "authoritarianism" = "Authoritarianism",
+    "hispanic_2Yes" = "Hispanic",
+    "sexFemale" = "Female",
+    "social_cons3Mod" = "Moderate",
+    "social_cons3Conserv" = "Conservative",
+    "blackYes" = "Black"
+  ))
+
+## plot using ggplot()
+ggplot(data = gss_logit_marg_tbl,
+       mapping = aes(x = reorder(factor, AME),
+                     y = AME,
+                     ymin = lower,
+                     ymax = upper)) +
+  # add line indicating null (0) effect
+  geom_hline(yintercept = 0, color = "gray80") +
+  # add point range plot to visualize estimate and confidence interval
+  geom_pointrange() +
+  coord_flip() +
+  labs(x = NULL,
+       y = "Average marginal effect")
+```
+
+**Observation 1.**:  From the above graph and from my understanding of AME:
+
+- On average if the respondent is black, there is a negative value. This implies a black respondent is more likely to believe racist professors should not be allowed to teach. This is true for majority of the variables considered as seen in the graph such as conservatives etc.
+
+- On average if the respondent is from the South, there is a ~1% probability of believing racist professors should be allowed to teach compared to if you were not from the south. Although, extremely small, this value is the highest considering all other variables in this particular analysis
+
+
+In the following analyses, I will explore these variables in further details and their interaction with each other.
+
+## 2. Using only Age to make predictions
 
 In this analysis I will estimate a logistic regression model of whether or not an individual believes a racist professor should be allowed to teach with 'age' as the predictor. I will estimate predicted probabilities and plot the logistic regression line using ggplot.
 
@@ -60,13 +119,13 @@ age_model_accuracy <- augment(age_model, type.predict = "response") %>%
 
 ```
 
-**Observation**: From the above graph, we can observe that there is a negative correlation between age and attitude towards allowing racist professors to teach. This means that older individuals believe there is less probability for racist professors to teach. 
+**Observation 2.**: From the above graph, we can observe that there is a negative correlation between age and attitude towards allowing racist professors to teach. This means that older individuals believe there is less probability for racist professors to teach. 
 
 Although the p-value > 0.05 making it statistically significant, the significance of this correlation is still quite low. Moreover, The above model  has an error rate of 49.3%. This is a very high error rate and hence we need to construct other models.
 
-## Using respondent's age and race (African American) as interactive predictors
+## 3. Using respondent's age and race (African American) as interactive predictors
 
-```{r age and race}
+```{r age and race-black}
 #estimating the model
 age_black_model <- glm(colrac ~ age * black, data = gss_data,
                 family = binomial)
@@ -105,13 +164,58 @@ age_black_model_accuracy <- augment(age_black_model, type.predict = "response") 
 
 ```
 
-**Observation**: This model shows that young respondents who are black believe that racist professors have a less probability of being allowed to teach. This is contrast with young respondents who are not black. However this gap in different opinions reduces with increase in age. Hence, old respondents at the age of ~90 have the same attitude towards racist professors.
+**Observation 3.**: This model shows that young respondents who are black believe that racist professors have a less probability of being allowed to teach. This is contrast with young respondents who are not black. However this gap in different opinions reduces with increase in age. Hence, old respondents at the age of ~90 have the same attitude towards racist professors.
 
 This may be explained by young African Americans' lower tolerance towards racist professors and demanding a change, as compared to their older counterparts somewhat accepting this racial bias as a bitter reality. However, the error rate of this model is 44.8%. Although lower than the previous model, there is still room for improvement.
 
-## Using respondent's age and social conservatism as interactive predictors
+## 4. Using respondent's age and race (Hispanic) as interactive predictors
 
-```{r}
+```{r age and race-hispanic}
+#estimating the model
+age_hispanic_model <- glm(colrac ~ age * hispanic_2, data = gss_data,
+                family = binomial)
+
+#present as a tidy table
+tidy(age_hispanic_model) %>%
+  mutate(term = recode(
+    term,
+    age = "Age",
+    hispanic_2Yes = "Hispanic",
+    "age:hispanic_2Yes" = "Age * Hispanic"
+  )) %>%
+  kable()
+
+#estimating the predicted probabilities
+age_hispanic_data <- augment(age_hispanic_model,
+                     newdata = data_grid(gss_data, age, hispanic_2),
+                     type.predict = "response")
+
+#graphing the line
+ggplot(age_hispanic_data, aes(age, .fitted, color = hispanic_2)) +
+  geom_line() +
+  labs(title = "Relationship between age and attitudes towards racist college professors",
+       subtitle = "Interactive",
+       y = "Predicted Probability of allowing racist prof. to teach",
+       x = "Age",
+       color = "If Hispanic:") +
+  scale_y_continuous(limits = c(0, 1))
+
+#calculating the error
+age_hispanic_model_accuracy <- augment(age_hispanic_model, type.predict = "response") %>%
+  mutate(.pred = as.numeric(.fitted > .5))
+    
+(age_hispanic_model_err <- mean(age_hispanic_model_accuracy$colrac != age_hispanic_model_accuracy$.pred,
+                      na.rm = TRUE))
+
+```
+
+**Observation 4.**: This graph shows an interesting relationship between age and hispanics on their attitudes towards racist professors. Younger Hispanics believe there is a less chance for racist professors to be allowed to teach when compared to other young non-hispanics. However, with increasing age, older Hispanics believe there is a higher chance for racist professors to be allowed to teach when compared to other older non-hispanics.
+
+Although, age and hispanics have negative coefficients, the interactive relationship between them has a positive coefficient and also a significant p-value.
+
+## 5. Using respondent's age and social conservatism as interactive predictors
+
+```{r age and social conservatism }
 #estimating the model
 age_soc_model <- glm(colrac ~ age * social_cons3, data = gss_data,
                 family = binomial)
@@ -153,17 +257,11 @@ age_soc_model_accuracy <- augment(age_soc_model, type.predict = "response") %>%
 
 ```
 
-**Observation**: From the above graph, we can ascertain that younger Moderates and Conservatives have the belief that racist professors have a less probability of being allowed to teach when compared to Liberals of the same age. This 
+**Observation 5.**: From the above graph, we can ascertain that younger Moderates and Conservatives have the belief that racist professors have a less probability of being allowed to teach when compared to Liberals of the same age. The gap between the belief of Moderates and Conservatives increases with age, and older conservatives believe racist professors should have the least probability of allowing racist professors to teach. This model has a 42.8% error rate.
 
+## 6. Using authoritarianism and geographic location as independant variables to make prediction
 
-
-
-
-
-
-## Using authoritarianism and geographic location as independant variables to make prediction
-
-```{r}
+```{r authoritarianism and geographic location - independant}
 #estimating the model
 auth_geo_model <- glm(colrac ~ authoritarianism + south, data = gss_data,
                 family = binomial)
@@ -197,18 +295,18 @@ auth_geo_model_accuracy <- augment(auth_geo_model, type.predict = "response") %>
 
 ```
 
-**Observation**: There is a negative correlation as depicted from the negative coefficient estimate between authoritarianism and attitudes towards racist professors. Hence, respondents who are less authoritarian believe racist professors have a higher chance of being allowed to teach. However, this result is not statistically significant as the p-value is less than 5% 
+**Observation 6.**: There is a negative correlation as depicted from the negative coefficient estimate between authoritarianism and attitudes towards racist professors. Hence, respondents who are less authoritarian believe racist professors have a higher chance of being allowed to teach. However, this result is not statistically significant as the p-value is less than 5% 
 
 People who belong from the south believe that there is less probability of allowing racist professors to teach as compared to those who do not belong from the south. The p-value for south is 0.309 which is greater than 0.05, making it statistically significant. 
 
 However, this model has an error of 44.8%. Although lower than before, we should construct other models too.
 
-## Using authoritarianism and geographic location as interactive variables to make prediction
+## 7. Using authoritarianism and geographic location as interactive variables to make prediction
 
 In the previous model, I looked at authoritarianism and geographic location independantly. In this model, I want to see if there is any difference from these two variables interacting.
 
 
-```{r}
+```{r authoritarianism and geographic location - interactive}
 #estimating the interactive model
 auth_geo_model_interactive <- glm(colrac ~ authoritarianism * south, data = gss_data,
                 family = binomial)
@@ -237,18 +335,25 @@ ggplot(auth_geo_data_interactive, aes(authoritarianism, .fitted, color = south))
 
 ```
 
-**Observation**: In this model, the p-value for the interaction between Authoritarianism and South is 0.45 which makes statistically significant. There is a negative coefficient indicating the negative relationship observed the graph.
+**Observation 7.**: In this model, the p-value for the interaction between Authoritarianism and South is 0.45 which makes statistically significant. There is a negative coefficient indicating the negative relationship observed the graph.
 Interestingly, different from the above graph, respondents with very low authoritarianism from the south believe racist professors have a higher chance of being allowed to teach. Otherwise the results are similiar to the previous model, only that the gap between the Southerners and Non-Southerns increases as authoritarianism of respondents increases.
 
-## Plotting Average Marginal Effects
+## Conclusion
 
-Plotting the average marginal effect of each variable using the margins package to visualize the logistic regression estimates and confidence intervals.
+In the report, I looked at the variables age, black, south, authoritarianism, social conservatism, hispanic and sex to understand their impact on respondents' attitudes towards racist professors. 
+
+- In the AME (Average Marginal Effect) analysis, we saw a black respondent is more likely to believe racist professors should not be allowed to teach. Moreover, young respondents who are black believe that racist professors have a less probability of being allowed to teach. However this gap in different opinions reduces with increase in age. Hence, old respondents at the age of ~90 have the same attitude towards racist professors, regardless of being black or not. 
+
+- Considering only age, older individuals believe there is less probability for racist professors to teach. 
+
+- Younger Hispanics believe there is a less chance for racist professors to be allowed to teach when compared to other young non-hispanics. However, with increasing age, older Hispanics believe there is a higher chance for racist professors to be allowed to teach when compared to other older non-hispanics.
+
+- Younger Moderates and Conservatives have the belief that racist professors have a less probability of being allowed to teach when compared to Liberals of the same age. The gap between the belief of Moderates and Conservatives increases with age, and older conservatives believe racist professors should have the least probability of allowing racist professors to teach.
+
+- In an interactive model between Authoritarianism and Southern location, respondents with very low authoritarianism from the south believe racist professors have a higher chance of being allowed to teach, Moreover, the gap between the Southerners and Non-Southerns increases as authoritarianism of respondents increases.
 
 
-
-
-
-Plot the average marginal effect of each variable using the margins package to visualize the logistic regression estimates and confidence intervals.## Session info
+## Session info
 
 ```{r}
 devtools::session_info()

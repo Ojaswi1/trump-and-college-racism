@@ -11,6 +11,7 @@ library(tidyverse)
 library(rcfss)
 library(modelr)
 library(broom)
+library(knitr)
 theme_set(theme_minimal())
 ```
 
@@ -32,7 +33,10 @@ In this analysis I will estimate a logistic regression model of whether or not a
 #estimating the model
 age_model <- glm(colrac ~ age, data = gss_data,
                 family = binomial)
-tidy(age_model)
+
+#present as a tidy table
+tidy(age_model) %>%
+  kable()
 
 #estimating the predicted probabilities
 age_data <- augment(age_model,
@@ -65,6 +69,77 @@ age_model_accuracy <- augment(age_model, type.predict = "response") %>%
 
 **Observation**: The above model which predicts attitudes towards racist professors has an error rate of 49.3%. This is a very high error rate and hence we need to construct other models.
 
+## Using respondent's age and race (African American) as interactive predictors
+
+```{r age and race}
+#estimating the model
+age_black_model <- glm(colrac ~ age * black, data = gss_data,
+                family = binomial)
+
+#present as a tidy table
+tidy(age_black_model) %>%
+  kable()
+
+#estimating the predicted probabilities
+age_black_data <- augment(age_black_model,
+                     newdata = data_grid(gss_data, age, black),
+                     type.predict = "response")
+
+#graphing the line
+ggplot(age_black_data, aes(age, .fitted, color = black)) +
+  geom_line() +
+  labs(title = "Relationship between age and attitudes towards racist college professors",
+       y = "Predicted Probability of allowing racist prof. to teach",
+       x = "Age",
+       color = "If race is black:") +
+  scale_y_continuous(limits = c(0, 1))
+
+#calculating the error
+age_black_model_accuracy <- augment(age_black_model, type.predict = "response") %>%
+  mutate(.pred = as.numeric(.fitted > .5))
+    
+(age_black_model_err <- mean(age_black_model_accuracy$colrac != age_black_model_accuracy$.pred,
+                      na.rm = TRUE))
+
+```
+
+**Observation**: This model shows that young respondents who are black believe that racist professors have a less probability of being allowed to teach. This is contrast with young respondents who are not black. However this gap in different opinions reduces with increase in age. Hence, old respondents at the age of ~90 have the same attitude towards racist professors.
+
+This may be explained by young African Americans' lower tolerance towards racist professors and demanding a change, as compared to their older counterparts somewhat accepting this racial bias as a bitter reality. However, the error rate of this model is 44.8%. Although lower than the previous model, there is still room for improvement.
+
+## Using respondent's age and social conservatism as interactive predictors
+
+```{r}
+#estimating the model
+age_soc_model <- glm(colrac ~ age * social_cons3, data = gss_data,
+                family = binomial)
+
+#present as a tidy table
+tidy(age_soc_model) %>%
+  kable()
+
+#estimating the predicted probabilities
+age_soc_data <- augment(age_soc_model,
+                     newdata = data_grid(gss_data, age, social_cons3),
+                     type.predict = "response")
+
+#graphing the line
+ggplot(age_soc_data, aes(age, .fitted, color = social_cons3)) +
+  geom_line() +
+  labs(title = "Relationship between age and attitudes towards racist college professors",
+       y = "Predicted Probability of allowing racist prof. to teach",
+       x = "Age",
+       color = "Social Conservatism Identification:") +
+  scale_y_continuous(limits = c(0, 1))
+
+#calculating the error
+age_soc_model_accuracy <- augment(age_soc_model, type.predict = "response") %>%
+  mutate(.pred = as.numeric(.fitted > .5))
+    
+(age_soc_model_err <- mean(age_soc_model_accuracy$colrac != age_soc_model_accuracy$.pred,
+                      na.rm = TRUE))
+
+```
 ## Session info
 
 ```{r}

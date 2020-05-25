@@ -11,6 +11,7 @@ library(tidyverse)
 library(here)
 library(modelr)
 library(broom)
+library(knitr)
 ```
 
 ## Part 1: President Donald Trump and 2005 video
@@ -106,7 +107,7 @@ trump_mod_coeff %>%
 
 ```
 
-**Observation**: From the above graph we can observe:
+**Observations**: From the above graph we can observe:
 
 - As party affiliation move towards the Right, one becomes more supportive of Trump ie Republicans are more more supportive of Trump than Democrats. Hence, for every increase in the 7-level party identification scale, the approval rating for Trump increases by 10.65. As Trump belongs to the Republican party, this strong postive relationship is implied and confirmed.
 
@@ -114,7 +115,7 @@ trump_mod_coeff %>%
 
 - As people become more educated, their approval of Trump falls. This is shown by the negative coefficient for Educational Attainment. More education, leads to a fall of 1.85 in Trump's approval ratings.
 
-- Females are less supportive of Trump. The negative coefficient of -2.35 indicates that on average, females are 2.35 times lower than non-females.
+- Females are less supportive of Trump. The negative coefficient of -2.35 indicates that on average, female sentiments towards Trump are 2.35 times lower than non-females.
 
 ## Session info
 

@@ -64,7 +64,9 @@ ggplot(data = gss_logit_marg_tbl,
   geom_pointrange() +
   coord_flip() +
   labs(x = NULL,
-       y = "Average marginal effect")
+       y = "Average marginal effect",
+       title = "Average Marginal Effects: Attitudes towards Racist Professors",
+       caption = "2012 General Social Survey")
 ```
 
 ![](racist-professors_files/figure-gfm/AME-1.png)<!-- -->
@@ -120,7 +122,8 @@ ggplot(age_data, aes(age, .fitted)) +
   geom_line() +
   labs(title = "Relationship between age and attitudes towards racist college professors",
        y = "Predicted Probability of allowing racist prof. to teach",
-       x = "Age") +
+       x = "Age",
+       caption = "2012 General Social Survey") +
   scale_y_continuous(limits = c(0, 1))
 ```
 
@@ -186,7 +189,8 @@ ggplot(age_black_data, aes(age, .fitted, color = black)) +
        subtitle = "Interactive",
        y = "Predicted Probability of allowing racist prof. to teach",
        x = "Age",
-       color = "If race is black:") +
+       color = "If race is black:",
+       caption = "2012 General Social Survey") +
   scale_y_continuous(limits = c(0, 1))
 ```
 
@@ -255,7 +259,8 @@ ggplot(age_hispanic_data, aes(age, .fitted, color = hispanic_2)) +
        subtitle = "Interactive",
        y = "Predicted Probability of allowing racist prof. to teach",
        x = "Age",
-       color = "If Hispanic:") +
+       color = "If Hispanic:",
+       caption = "2012 General Social Survey") +
   scale_y_continuous(limits = c(0, 1))
 ```
 
@@ -328,8 +333,11 @@ ggplot(age_soc_data, aes(age, .fitted, color = social_cons3)) +
        y = "Predicted Probability of allowing racist prof. to teach",
        subtitle = "Interactive",
        x = "Age",
-       color = "Social Conservatism Identification:") +
-  scale_y_continuous(limits = c(0, 1))
+       color = "Social Conservatism Identification:",
+       caption = "2012 General Social Survey") +
+  scale_y_continuous(limits = c(0, 1)) + 
+  #moving the legend to the bottom
+  theme(legend.position = "bottom")
 ```
 
 ![](racist-professors_files/figure-gfm/age%20and%20social%20conservatism-1.png)<!-- -->
@@ -384,8 +392,12 @@ ggplot(auth_geo_data, aes(authoritarianism, .fitted, color = south)) +
   labs(title = "Impact of authoritarianism and location in attitudes towards racist college professors",
        subtitle = "Independantly",
        y = "Predicted Probability of allowing racist prof. to teach",
-       x = "Authoritarianism Scale") +
-  scale_y_continuous(limits = c(0, 1))
+       x = "Authoritarianism Scale",
+       caption = "2012 General Social Survey",
+       color = "South?") +
+  scale_y_continuous(limits = c(0, 1)) +
+  #moving the legend to the bottom
+  theme(legend.position = "bottom")
 ```
 
 ![](racist-professors_files/figure-gfm/authoritarianism%20and%20geographic%20location%20-%20independant-1.png)<!-- -->
@@ -414,8 +426,8 @@ belong from the south. The p-value for south is 0.309 which is greater
 than 0.05, making it statistically significant.
 
 However, this model has an error of 44.8%. Although lower than before,
-we should construct other models
-too.
+there is room for
+improvement.
 
 ## 7\. Using authoritarianism and geographic location as interactive variables to make prediction
 
@@ -456,8 +468,12 @@ ggplot(auth_geo_data_interactive, aes(authoritarianism, .fitted, color = south))
   labs(title = "Impact of authoritarianism and location in attitudes towards racist college professors",
        subtitle = "Interactive",
        y = "Predicted Probability of allowing racist prof. to teach",
-       x = "Authoritarianism Scale") +
-  scale_y_continuous(limits = c(0, 1))
+       x = "Authoritarianism Scale",
+       caption = "2012 General Social Survey",
+       color = "South?") +
+  scale_y_continuous(limits = c(0, 1)) +
+  #moving the legend to the bottom
+  theme(legend.position = "bottom")
 ```
 
 ![](racist-professors_files/figure-gfm/authoritarianism%20and%20geographic%20location%20-%20interactive-1.png)<!-- -->
